@@ -50,7 +50,7 @@ var <#= Model.DataTypeName #> = function(<#= String.Join(",",props).ToLower() #>
 	}
 #>
 };
-var <#= Model.PluralName #> = function(events){
+var <#= Model.PluralName #>VM = function(events){
 	var self = this;
 	this.<#= Model.PluralName #>Model = ko.observableArray([]);
 	this.AddOrUpdate = function (c) {

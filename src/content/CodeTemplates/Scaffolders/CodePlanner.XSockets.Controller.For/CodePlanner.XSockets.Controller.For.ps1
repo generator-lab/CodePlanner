@@ -41,34 +41,13 @@ $file.Remove()
 Write-Host (Get-Project $ProjectName).Name Installing : XSockets.Core -ForegroundColor DarkGreen
 Install-Package XSockets.Core -ProjectName (Get-Project $ProjectName).Name
 
-###################################
-#Setup post and pre build events  #
-#for Project                      #
-###################################
+$defProjName = (Get-Project $Project).ProjectName
+(Get-Project $Project).Object.References.AddProject((Get-Project $ProjectName))
+(Get-Project $ProjectName).Object.References.AddProject((Get-Project $($defProjName + ".Core")))
+(Get-Project $ProjectName).Object.References.AddProject((Get-Project $($defProjName + ".Data")))
+(Get-Project $ProjectName).Object.References.AddProject((Get-Project $($defProjName + ".Service")))
+(Get-Project $ProjectName).Object.References.Add("System.ComponentModel.DataAnnotations");
 
-# Get the current Post Build Event cmd
-$currentPostBuildCmd = (Get-Project $ProjectName).Properties.Item("PostBuildEvent").Value
-
-$postBuildAddCmd = "copy `"`$(TargetPath)`", `"`$(SolutionDir)"+$defaultProject.Name+"\XSockets\XSocketServerPlugins\`""
-
-# Append our post build command if it's not already there
-if (!$currentPostBuildCmd.Contains($postBuildAddCmd)) {
-    (Get-Project $ProjectName).Properties.Item("PostBuildEvent").Value += $postBuildAddCmd
-}
-
-# Get the current Pre Build Event cmd
-$currentPreBuildCmd = (Get-Project $ProjectName).Properties.Item("PreBuildEvent").Value
-
-$preBuildAddCmd = "IF NOT EXIST `"`$(SolutionDir)"+$defaultProject.Name+"\XSockets\XSocketServerPlugins\`" mkdir `"`$(SolutionDir)"+$defaultProject.Name+"\XSockets\XSocketServerPlugins\`""
-
-# Append our pre build command if it's not already there
-if (!$currentPreBuildCmd.Contains($preBuildAddCmd)) {
-    (Get-Project $ProjectName).Properties.Item("PreBuildEvent").Value += $preBuildAddCmd
-}
-
-###################################
-#End Setup post/pre build events  #
-###################################
 }
 
 ##############################################################
@@ -103,11 +82,18 @@ if((Get-ProjectItem "Ninject\ServiceModule.cs" -Project $ProjectName) -eq $null)
 }
 
 ##############################################################
+# Create the Model\Page if it does not exists
+##############################################################
+if((Get-ProjectItem "Model\Page.cs" -Project $ProjectName) -eq $null){
+	Scaffold CodePlanner.XSockets.PageModel $ProjectName
+}
+
+##############################################################
 # Create the Controller.ModelType
 ##############################################################
 $outputPath = "$($Controller).$($ModelType)"
 
-$ximports = $coreProjectName + ".ViewModel," + $coreProjectName + ".Model," + $coreProjectName + ".Interfaces.Service"
+$ximports = $coreProjectName + ".ViewModel," + $coreProjectName + ".Model," + $coreProjectName + ".Interfaces.Service," + $ProjectName + ".Model"
 
 if($Controller.lastindexOf("\") -eq -1){
 	$addedNS = ""
