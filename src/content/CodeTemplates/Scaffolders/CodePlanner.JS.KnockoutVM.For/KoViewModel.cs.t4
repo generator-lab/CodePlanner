@@ -1,0 +1,176 @@
+/*
+Copyright (c) <#= DateTime.Now.Year #> 
+# Ulf Tomas Bjorklund
+# http://average-uffe.blogspot.com/
+# http://twitter.com/ulfbjo
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*/
+<#@ Template Language="C#" HostSpecific="True" Inherits="DynamicTransform" #>
+<#@ Output Extension="js" #>
+<#@ assembly name="System.ComponentModel.DataAnnotations" #>
+<#@ assembly name="System.Core" #>
+<#@ assembly name="System.Data.Entity" #>
+<#@ assembly name="System.Data.Linq" #>
+<#@ import namespace="System" #>
+<#@ import namespace="System.Collections" #>
+<#@ import namespace="System.Collections.Generic" #>
+<#@ import namespace="System.ComponentModel.DataAnnotations" #>
+<#@ import namespace="System.Data.Linq.Mapping" #>
+<#@ import namespace="System.Data.Objects.DataClasses" #>
+<#@ import namespace="System.Linq" #>
+<#@ import namespace="System.Reflection" #>
+<#@ import namespace="EnvDTE" #>
+<# var DataType = (EnvDTE.CodeType) Model.DataType; #>
+<# var props = GetModelProperties(DataType, false).Select(p => p.Name).ToList(); #>
+//Remember to add a reference to KnockoutJS!
+var <#= Model.DataTypeName #> = function(<#= String.Join(",",props).ToLower() #>){	
+	<#
+	//Own properties 
+	foreach (var property in props) {#>
+	this.<#= property #> = <#= property.ToLower() #>;
+	<#
+	}
+#>
+};
+var <#= Model.PluralName #> = function(events){
+	var self = this;
+	this.<#= Model.PluralName #>Model = ko.observableArray([]);
+	this.AddOrUpdate = function (c) {
+        var match = ko.utils.arrayFirst(self.<#= Model.PluralName #>Model(), function (item) {
+            return item.Id === c.Id;
+        });
+        if (!match) {
+            self.<#= Model.PluralName #>Model.push(new <#= Model.DataTypeName #>(<#= String.Join(",",props.Select(p => "c." + p)) #>));
+            if (events !== undefined && typeof(events.onAdd) === 'function') {
+                events.onAdd(c);
+            }
+        } else {
+            self.<#= Model.PluralName #>Model.remove(match);
+            self.<#= Model.PluralName #>Model.push(new <#= Model.DataTypeName #>(<#= String.Join(",",props.Select(p => "c." + p)) #>));
+            if (events !== undefined && typeof (events.onUpdate) === 'function') {
+                events.onUpdate(c);
+            }
+        }
+    };
+    this.Init = function (arr<#= Model.PluralName #>) {
+        arr<#= Model.PluralName #>.forEach(function (c) {
+            self.<#= Model.PluralName #>Model.push(new <#= Model.DataTypeName #>(<#= String.Join(",",props.Select(p => "c." + p)) #>));
+        });
+    };
+    this.Remove = function (r) {
+        var match = ko.utils.arrayFirst(self.<#= Model.PluralName #>Model(), function (item) {
+            return item.Id === r.Id;
+        });
+        if (match) {
+            self.<#= Model.PluralName #>Model.remove(match);
+            if (events !== undefined && typeof (events.onRemove) === 'function') {
+                events.onRemove(r);
+            }
+        }
+    };
+};
+
+<#+
+// Describes the information about a property on the model
+class ModelProperty {
+    public string Name { get; set; }
+    public string ValueExpression { get; set; }
+	public EnvDTE.CodeTypeRef Type { get; set; }
+    public bool IsPrimaryKey { get; set; }
+	public bool IsForeignKey { get; set; }
+	public bool IsReadOnly { get; set; }
+	public List<EnvDTE.CodeAttribute> Attributes { get; set; }
+}
+
+// Change this list to include any non-primitive types you think should be eligible to be edited using a textbox
+static Type[] bindableNonPrimitiveTypes = new[] {
+    typeof(string),
+    typeof(decimal),
+    typeof(Guid),
+    typeof(DateTime),
+	typeof(Nullable<DateTime>),
+    typeof(DateTimeOffset),
+    typeof(TimeSpan),
+};
+
+// Call this to get the list of properties in the model. Change this to modify or add your
+// own default formatting for display values.
+List<ModelProperty> GetModelProperties(EnvDTE.CodeType typeInfo, bool includeUnbindableProperties) {
+    List<ModelProperty> results = GetEligibleProperties(typeInfo, includeUnbindableProperties);
+    
+    foreach (ModelProperty prop in results) {
+        if (prop.Type.UnderlyingTypeIs<double>() || prop.Type.UnderlyingTypeIs<decimal>()) {
+            prop.ValueExpression = "String.Format(\"{0:F}\", " + prop.ValueExpression + ")";
+        }
+        else if (prop.Type.UnderlyingTypeIs<DateTime>()) {
+            prop.ValueExpression = "String.Format(\"{0:g}\", " + prop.ValueExpression + ")";
+        }
+		else if (!IsBindableType(prop.Type)) {
+			prop.ValueExpression = GetValueExpression("Model." + prop.Name, (EnvDTE.CodeType)prop.Type.CodeType);
+		}
+    }
+
+    return results;
+}
+
+// Change this list to include the names of properties that should be selected to represent an entity as a single string
+static string[] displayPropertyNames = new[] { "N/A" };
+
+string GetValueExpression(string propertyExpression, EnvDTE.CodeType propertyType) {
+	if (propertyType != null) {
+		var chosenSubproperty = propertyType.DisplayColumnProperty() ?? propertyType.FindProperty(displayPropertyNames);
+		if (chosenSubproperty != null) {
+			var toStringSuffix = chosenSubproperty.Type.AsFullName == "System.String" ? "" : ".ToString()";
+			return String.Format("({0} == null ? \"None\" : {0}.{1}{2})", propertyExpression, chosenSubproperty.Name, toStringSuffix);
+		}
+	}
+	return "Html.DisplayTextFor(_ => " + propertyExpression + ").ToString()";
+}
+
+// Helper
+List<ModelProperty> GetEligibleProperties(EnvDTE.CodeType typeInfo, bool includeUnbindableProperties) {
+    List<ModelProperty> results = new List<ModelProperty>();
+	
+	if (typeInfo != null) {
+		foreach (var prop in typeInfo.VisibleMembers().OfType<EnvDTE.CodeProperty>()) {
+			if (prop.IsReadable() && !prop.HasIndexParameters() && (includeUnbindableProperties || IsBindableType(prop.Type))) {
+				results.Add(new ModelProperty {
+					Name = prop.Name,
+					ValueExpression = "Model." + prop.Name,
+					Type = prop.Type,
+					IsPrimaryKey = false,
+					IsForeignKey = false,
+					IsReadOnly = !prop.IsWriteable(),
+					Attributes = prop.Attributes.OfType<EnvDTE.CodeAttribute>().ToList()
+					
+				});
+			}
+		}
+	}
+
+    return results;
+}
+
+// Helper
+bool IsBindableType(EnvDTE.CodeTypeRef type) {
+    return type.UnderlyingIsPrimitive() || bindableNonPrimitiveTypes.Any(x => type.UnderlyingTypeIs(x));
+}
+#>

@@ -1,0 +1,30 @@
+<#@ Template Language="C#" HostSpecific="True" Inherits="DynamicTransform" #>
+<#@ Output Extension="cs" #>
+using Ninject.Modules;
+<#
+	foreach(string ns in Model.ExtraUsings.Split(','))
+	{
+#>
+using <#= ns #>;
+<#
+	}
+#>
+namespace <#= Model.Namespace #>
+{
+    public class ServiceModule : NinjectModule
+    {
+        public override void Load()
+        {
+            Bind<IUnitOfWork>().To<UnitOfWork>().InThreadScope();
+            Bind<IDatabaseFactory>().To<DatabaseFactory>().InThreadScope();
+			<#
+			foreach(var m in Model.ModelNames){
+			#>
+			Bind<I<#= m #>Repository>().To<<#= m #>Repository>().InThreadScope();
+            Bind<I<#= m #>Service>().To<<#= m #>Service>().InThreadScope();
+			<#
+			}
+			#>
+        }
+    }
+}
