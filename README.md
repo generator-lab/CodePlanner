@@ -1,6 +1,16 @@
 CodePlanner
 ===========
 
+Getting started
+===========
+CodePlanner is available on nuget https://nuget.org/packages/codeplanner
+To get started just run Install-Package CodePlanner from the Package Manager Console in Visual Studio.
+
+Note: Only C# allowed
+
+About
+===========
+
 A code generator tool for Visual Studio based on T4 &amp; Powershell.
 
 By using the full power of Visual Studio this package will be able to generate a complete backend for you.
