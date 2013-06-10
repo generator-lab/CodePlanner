@@ -53,7 +53,7 @@ $dataProjectName = $rootNamespace + ".Data"
 ##############################################################
 $outputPath = "BaseRepository"
 $namespace = $dataProjectName
-$ximports = $coreProjectName + ".Model," + $coreProjectName + ".Interfaces.Data," + $coreProjectName + ".Interfaces.Paging," + $coreProjectName + ".Common.Paging"
+$ximports = $coreProjectName + ".Model," + $coreProjectName + ".Interfaces.Data," + $coreProjectName + ".Interfaces.Paging," + $coreProjectName + ".Common.Paging," + $dataProjectName + ".Helpers"
 
 Add-ProjectItemViaTemplate $outputPath -Template BaseRepository `
 	-Model @{ Namespace = $namespace; ExtraUsings = $ximports } `
@@ -144,7 +144,7 @@ $namespace = $dataProjectName + ".Helpers"
 $ximports = ""
 
 Add-ProjectItemViaTemplate $outputPath -Template DataBaseHelpers `
-	-Model @{ Namespace = $namespace; ExtraUsings = $ximports } `
+	-Model @{ Namespace = $namespace; } `
 	-SuccessMessage "Added DataBaseHelpers at {0}" `
 	-TemplateFolders $TemplateFolders -Project $dataProjectName -CodeLanguage $CodeLanguage -Force:$Force
 

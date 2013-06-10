@@ -29,14 +29,6 @@ using System;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
-<#
-	foreach(string ns in Model.ExtraUsings.Split(','))
-	{
-	#>
-using <#= ns #>;
-	<#
-	}
-#>
 
 namespace <#= Model.Namespace #>
 {
