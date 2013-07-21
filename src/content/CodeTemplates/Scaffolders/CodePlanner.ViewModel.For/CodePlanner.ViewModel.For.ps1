@@ -59,17 +59,22 @@ Write-Host "Collecting properties for the model, this might take a while" -Foreg
 
 #Get regular properties
 $properties = @()
-(Get-ProjectType $ModelType).Children | Where-Object{$_.Kind -eq 4 -and $_.Type.TypeKind -ne 1 } | ForEach{
+(Get-ProjectType $ModelType).Children | Where-Object{$_.Kind -eq 4 -and $_.Type.TypeKind -ne 1 -and $_.Type.CodeType.Name -ne "Nullable" } | ForEach{
 	$p = "$($_.Name),$($_.Type.AsString)"; 
 	$properties = $properties + $p
 }
 #DateTime
-(Get-ProjectType $ModelType).Children | Where-Object{$_.Kind -eq 4 -and $_.Type.TypeKind -eq 1 -and $_.Type.CodeType.Kind -eq 11} | ForEach{	
+(Get-ProjectType $ModelType).Children | Where-Object{$_.Kind -eq 4 -and $_.Type.TypeKind -eq 1 -and $_.Type.CodeType.Kind -eq 11 -and $_.Type.CodeType.Name -ne "Nullable"} | ForEach{	
 	$p = "$($_.Name),$($_.Type.AsString)"; 
 	$properties = $properties + $p
 }
 #Enums
-(Get-ProjectType $ModelType).Children | Where-Object{$_.Kind -eq 4 -and $_.Type.TypeKind -eq 1 -and $_.Type.CodeType.Kind -eq 10} | ForEach{	
+(Get-ProjectType $ModelType).Children | Where-Object{$_.Kind -eq 4 -and $_.Type.TypeKind -eq 1 -and $_.Type.CodeType.Kind -eq 10 -and $_.Type.CodeType.Name -ne "Nullable"} | ForEach{	
+	$p = "$($_.Name),$($_.Type.AsString)"; 
+	$properties = $properties + $p
+}
+#Nullables
+(Get-ProjectType $ModelType).Children | Where-Object{$_.Kind -eq 4 -and $_.Type.CodeType.Name -eq "Nullable" -and $_.Type.TypeKind -eq 1} | ForEach{	
 	$p = "$($_.Name),$($_.Type.AsString)"; 
 	$properties = $properties + $p
 }
@@ -83,7 +88,7 @@ $parents = @()
 
 #Get "children"
 $children = @()
-(Get-ProjectType $ModelType).Children | Where-Object{$_.Kind -eq 4 -and $_.Type.TypeKind -eq 1 -and $_.Type.IsGeneric -eq $true} | ForEach{	
+(Get-ProjectType $ModelType).Children | Where-Object{$_.Kind -eq 4 -and $_.Type.TypeKind -eq 1 -and $_.Type.IsGeneric -eq $true -and $_.Type.CodeType.Name -ne "Nullable"} | ForEach{	
 	$p = "$($_.Name),$($_.Type.AsString)";
 	$children = $children + $p
 }
@@ -94,6 +99,10 @@ $children = @()
 $outputPath = "ViewModel\"+$foundModelType.Name+"ViewModel"
 $namespace = $namespace + ".Core.ViewModel"
 $ximports = $coreProjectName + ".Model"
+
+Write-Host $properties
+Write-Host $parents
+Write-Host $children
 
 Add-ProjectItemViaTemplate $outputPath -Template ViewModel `
 	-Model @{ 	
